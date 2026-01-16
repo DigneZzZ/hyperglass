@@ -32,8 +32,6 @@ RUN pnpm install -P
 # -----------------------------------------------------------------------------
 FROM ui AS hyperglass-build
 WORKDIR /opt/hyperglass
-# Pin typer to compatible version before installing hyperglass
-RUN pip3 install "typer>=0.9.0,<0.12.0"
 RUN pip3 install -e .
 
 # -----------------------------------------------------------------------------
