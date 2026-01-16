@@ -20,26 +20,27 @@ cli = typer.Typer(
 )
 
 
-def version_callback(ctx: typer.Context, param: typer.CallbackParam, value: bool) -> None:
+def version_callback(value: bool) -> None:
     """Print version and exit."""
-    if not value or ctx.resilient_parsing:
-        return
-    from hyperglass import __version__
-    echo.info(__version__)
-    raise typer.Exit()
+    if value:
+        from hyperglass import __version__
+        echo.info(__version__)
+        raise typer.Exit()
 
 
 @cli.callback()
 def main(
     version: Annotated[
-        bool,
+        Optional[bool],
         typer.Option(
             "--version", "-v",
             callback=version_callback,
+            is_flag=True,
             is_eager=True,
+            expose_value=False,
             help="Show hyperglass version and exit.",
         ),
-    ] = False,
+    ] = None,
 ) -> None:
     """hyperglass - The network looking glass that tries to make the internet better."""
     pass
