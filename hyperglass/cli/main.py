@@ -3,7 +3,7 @@
 # Standard Library
 import re
 import sys
-import typing as t
+from typing import Annotated, Optional
 
 # Third Party
 import typer
@@ -12,54 +12,57 @@ import typer
 from .echo import echo
 
 
-cli = typer.Typer(name="hyperglass", help="hyperglass Command Line Interface", no_args_is_help=True)
+cli = typer.Typer(
+    name="hyperglass",
+    help="hyperglass Command Line Interface",
+    no_args_is_help=True,
+    rich_markup_mode="rich",
+)
 
 
-def run():
-    """Run the hyperglass CLI."""
-    return typer.run(cli())
-
-
-@cli.callback(invoke_without_command=True)
-def _version_callback(
-    ctx: typer.Context,
-    version: bool = typer.Option(
-        False, "--version", "-v", help="hyperglass version", is_eager=True
-    ),
-) -> None:
-    """hyperglass"""
-    if version:
-        # Project
+def version_callback(value: bool) -> None:
+    """Print version and exit."""
+    if value:
         from hyperglass import __version__
         echo.info(__version__)
         raise typer.Exit()
-    if ctx.invoked_subcommand is None:
-        echo.info(ctx.get_help())
+
+
+@cli.callback()
+def main(
+    version: Annotated[
+        bool,
+        typer.Option(
+            "--version", "-v",
+            callback=version_callback,
+            is_eager=True,
+            help="Show hyperglass version and exit.",
+        ),
+    ] = False,
+) -> None:
+    """hyperglass - The network looking glass that tries to make the internet better."""
+    pass
 
 
 @cli.command(name="start")
 def _start(
-    build: bool = typer.Option(False, "--build/--no-build", help="Build UI before starting"),
-    workers: t.Optional[int] = typer.Option(None, help="Number of workers")
+    build: Annotated[bool, typer.Option("--build", "-b", help="Build UI before starting")] = False,
+    workers: Annotated[Optional[int], typer.Option("--workers", "-w", help="Number of workers")] = None,
 ) -> None:
     """Start hyperglass"""
     # Project
-    from hyperglass.main import run
+    from hyperglass.main import run as start_server
 
     # Local
     from .util import build_ui
-
-    kwargs = {}
-    if workers != 0:
-        kwargs["workers"] = workers
 
     try:
         if build:
             build_complete = build_ui(timeout=180)
             if build_complete:
-                run(workers)
+                start_server(workers)
         else:
-            run(workers)
+            start_server(workers)
 
     except (KeyboardInterrupt, SystemExit) as err:
         error_message = str(err)
@@ -70,19 +73,21 @@ def _start(
 
 
 @cli.command(name="build-ui")
-def _build_ui(timeout: int = typer.Option(180, help="Timeout in seconds")) -> None:
+def _build_ui(
+    timeout: Annotated[int, typer.Option("--timeout", "-t", help="Timeout in seconds")] = 180,
+) -> None:
     """Create a new UI build."""
     # Local
-    from .util import build_ui as _build_ui
+    from .util import build_ui as do_build_ui
 
     with echo._console.status(
         f"Starting new UI build with a {timeout} second timeout...", spinner="aesthetic"
     ):
-        _build_ui(timeout=120)
+        do_build_ui(timeout=timeout)
 
 
 @cli.command(name="system-info")
-def _system_info():
+def _system_info() -> None:
     """Get system information for a bug report"""
     # Third Party
     from rich import box
@@ -118,7 +123,7 @@ def _system_info():
 
 
 @cli.command(name="clear-cache")
-def _clear_cache():
+def _clear_cache() -> None:
     """Clear the Redis cache"""
     # Project
     from hyperglass.state import use_state
@@ -140,8 +145,8 @@ def _clear_cache():
 
 @cli.command(name="devices")
 def _devices(
-    search: t.Optional[str] = typer.Argument(None, help="Device ID or Name Search Pattern"),
-):
+    search: Annotated[Optional[str], typer.Argument(help="Device ID or Name Search Pattern")] = None,
+) -> None:
     """Show all configured devices"""
     # Third Party
     from rich.columns import Columns
@@ -189,8 +194,8 @@ def _devices(
 
 @cli.command(name="directives")
 def _directives(
-    search: t.Optional[str] = typer.Argument(None, help="Directive ID or Name Search Pattern"),
-):
+    search: Annotated[Optional[str], typer.Argument(help="Directive ID or Name Search Pattern")] = None,
+) -> None:
     """Show all configured devices"""
     # Third Party
     from rich.columns import Columns
@@ -238,15 +243,11 @@ def _directives(
 
 @cli.command(name="plugins")
 def _plugins(
-    search: t.Optional[str] = typer.Argument(None, help="Plugin ID or Name Search Pattern"),
-    _input: bool = typer.Option(
-        False, "--input/--no-input", show_default=False, help="Show Input Plugins"
-    ),
-    output: bool = typer.Option(
-        False, "--output/--no-output", show_default=False, help="Show Output Plugins"
-    ),
-):
-    """Show all configured devices"""
+    search: Annotated[Optional[str], typer.Argument(help="Plugin ID or Name Search Pattern")] = None,
+    show_input: Annotated[bool, typer.Option("--input", "-i", help="Show Input Plugins only")] = False,
+    show_output: Annotated[bool, typer.Option("--output", "-o", help="Show Output Plugins only")] = False,
+) -> None:
+    """Show all configured plugins"""
     # Third Party
     from rich.columns import Columns
 
@@ -254,10 +255,9 @@ def _plugins(
     from hyperglass.state import use_state
 
     to_fetch = ("input", "output")
-    if _input is True:
+    if show_input:
         to_fetch = ("input",)
-
-    elif output is True:
+    elif show_output:
         to_fetch = ("output",)
 
     state = use_state()
@@ -278,10 +278,8 @@ def _plugins(
 
 @cli.command(name="params")
 def _params(
-    path: t.Optional[str] = typer.Argument(
-        None, help="Parameter Object Path, for example 'messages.no_input'"
-    ),
-):
+    path: Annotated[Optional[str], typer.Argument(help="Parameter Object Path, for example 'messages.no_input'")] = None,
+) -> None:
     """Show configuration parameters"""
     # Standard Library
     from operator import attrgetter
@@ -330,7 +328,7 @@ def _params(
 
 
 @cli.command(name="setup")
-def _setup():
+def _setup() -> None:
     """Initialize hyperglass setup."""
     # Local
     from .installer import Installer
@@ -340,10 +338,15 @@ def _setup():
 
 
 @cli.command(name="settings")
-def _settings():
+def _settings() -> None:
     """Show hyperglass system settings (environment variables)"""
 
     # Project
     from hyperglass.settings import Settings
 
     echo.plain(Settings)
+
+
+def run() -> None:
+    """Run the hyperglass CLI."""
+    cli()
