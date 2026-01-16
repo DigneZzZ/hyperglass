@@ -3,6 +3,9 @@ hyperglass/hyperglass/static
 TODO*
 .env
 
+# Installation scripts with secrets (SSH keys, configs)
+docker/install-*.sh
+
 test.py
 .DS_Store
 .idea

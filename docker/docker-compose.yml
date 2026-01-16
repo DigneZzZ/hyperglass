@@ -47,8 +47,11 @@ services:
       - HYPERGLASS_DEV_MODE=false
       - HYPERGLASS_REDIS_HOST=redis
       - HYPERGLASS_CONTAINER=true
+    extra_hosts:
+      # Allow container to connect to host machine via SSH
+      - "host.docker.internal:host-gateway"
     volumes:
-      # Mount configuration directory
+      # Mount configuration directory (includes SSH keys)
       - ./config:/etc/hyperglass:ro
       # Optional: Mount custom speed test files
       # - ./speedtest:/var/www/speedtest:ro
