@@ -22,10 +22,11 @@ cli = typer.Typer(
 
 def version_callback(value: bool) -> None:
     """Print version and exit."""
-    if value:
-        from hyperglass import __version__
-        echo.info(__version__)
-        raise typer.Exit()
+    if not value:
+        return
+    from hyperglass import __version__
+    echo.info(__version__)
+    raise typer.Exit()
 
 
 @cli.callback()
