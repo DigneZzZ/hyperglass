@@ -42,11 +42,13 @@ FROM hyperglass-build AS production
 # Install nginx and required tools
 RUN apk add --no-cache nginx bash curl
 
-# Create directories for nginx and speed test files
+# Create directories for nginx, speed test files, and hyperglass
 RUN mkdir -p /var/www/speedtest \
     && mkdir -p /var/log/nginx \
     && mkdir -p /run/nginx \
-    && mkdir -p /etc/hyperglass/custom
+    && mkdir -p /etc/hyperglass/custom \
+    && mkdir -p /etc/hyperglass/plugins \
+    && mkdir -p /etc/hyperglass/static/images
 
 # Generate speed test files (dummy files for download testing)
 # Using /dev/urandom for realistic network testing
