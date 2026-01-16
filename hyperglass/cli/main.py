@@ -20,9 +20,9 @@ cli = typer.Typer(
 )
 
 
-def version_callback(value: bool) -> None:
+def version_callback(ctx: typer.Context, param: typer.CallbackParam, value: bool) -> None:
     """Print version and exit."""
-    if not value:
+    if not value or ctx.resilient_parsing:
         return
     from hyperglass import __version__
     echo.info(__version__)
