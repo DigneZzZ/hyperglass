@@ -239,10 +239,10 @@ def _directives(
 def _plugins(
     search: t.Optional[str] = typer.Argument(None, help="Plugin ID or Name Search Pattern"),
     _input: bool = typer.Option(
-        False, "--input", show_default=False, is_flag=True, help="Show Input Plugins"
+        False, "--input", show_default=False, help="Show Input Plugins"
     ),
     output: bool = typer.Option(
-        False, "--output", show_default=False, is_flag=True, help="Show Output Plugins"
+        False, "--output", show_default=False, help="Show Output Plugins"
     ),
 ):
     """Show all configured devices"""
