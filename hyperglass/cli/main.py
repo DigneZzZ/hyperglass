@@ -12,15 +12,6 @@ import typer
 from .echo import echo
 
 
-def _version(value: bool) -> None:
-    # Project
-    from hyperglass import __version__
-
-    if value:
-        echo.info(__version__)
-        raise typer.Exit()
-
-
 cli = typer.Typer(name="hyperglass", help="hyperglass Command Line Interface", no_args_is_help=True)
 
 
@@ -29,18 +20,28 @@ def run():
     return typer.run(cli())
 
 
-@cli.callback(name="version")
-def _version(
-    version: t.Optional[bool] = typer.Option(
-        None, "--version", help="hyperglass version", callback=_version
+@cli.callback(invoke_without_command=True)
+def _version_callback(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        False, "--version", "-v", help="hyperglass version", is_eager=True
     ),
 ) -> None:
     """hyperglass"""
-    pass
+    if version:
+        # Project
+        from hyperglass import __version__
+        echo.info(__version__)
+        raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        echo.info(ctx.get_help())
 
 
 @cli.command(name="start")
-def _start(build: bool = False, workers: t.Optional[int] = None) -> None:
+def _start(
+    build: bool = typer.Option(False, "--build/--no-build", help="Build UI before starting"),
+    workers: t.Optional[int] = typer.Option(None, help="Number of workers")
+) -> None:
     """Start hyperglass"""
     # Project
     from hyperglass.main import run
