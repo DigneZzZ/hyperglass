@@ -26,9 +26,12 @@ services:
   # Looking Glass Application
   # ===========================================================================
   looking-glass:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/dignezzz/hyperglass:latest
+    # Or build locally (uncomment below, comment image above):
+    # build:
+    #   context: ..
+    #   dockerfile: Dockerfile
     container_name: lg-app
     restart: unless-stopped
     # Ports are only exposed to localhost (127.0.0.1)

@@ -53,7 +53,7 @@
     # Speed test files - proxy to nginx container
     # No buffering for accurate speed measurements
     handle /speedtest/* {
-        reverse_proxy localhost:8080 {
+        reverse_proxy lg-app:8080 {
             flush_interval -1
             header_down -Server
         }
@@ -61,12 +61,12 @@
 
     # Health check endpoint
     handle /health {
-        reverse_proxy localhost:8080
+        reverse_proxy lg-app:8080
     }
 
     # Everything else goes to hyperglass
     handle {
-        reverse_proxy localhost:8001 {
+        reverse_proxy lg-app:8001 {
             header_down -Server
         }
     }

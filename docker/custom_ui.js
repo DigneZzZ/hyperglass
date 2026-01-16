@@ -21,21 +21,15 @@
     // Available locations for the navigation bar
     locations: [
       {
-        id: 'moscow',
-        name: 'Moscow, RU',
-        url: 'https://lg-moscow.example.com',
-        flag: '🇷🇺'
-      },
-      {
         id: 'amsterdam',
         name: 'Amsterdam, NL',
-        url: 'https://lg-amsterdam.example.com',
+        url: 'https://lg-amsterdam.alfahost.pro',
         flag: '🇳🇱'
       },
       {
-        id: 'frankfurt',
-        name: 'Frankfurt, DE',
-        url: 'https://lg-frankfurt.example.com',
+        id: 'estonia',
+        name: 'Estonia, ES',
+        url: 'https://lg-frankfurt.alfahost.pro',
         flag: '🇩🇪'
       }
     ],
