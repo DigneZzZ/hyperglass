@@ -1,0 +1,83 @@
+# =============================================================================
+# Custom UI Configuration Script
+# Inject this into your hyperglass.yaml's custom_javascript file or
+# include it directly in a custom.js file
+# =============================================================================
+#
+# This file shows how to configure the locations and speed test settings
+# for the custom_ui.js script. Add this configuration BEFORE the custom_ui.js
+# content, or modify the DEFAULT_CONFIG in custom_ui.js directly.
+#
+# Option 1: Place this in a separate file and concatenate:
+#   cat lg-config.js custom_ui.js > final_custom.js
+#
+# Option 2: Edit the DEFAULT_CONFIG in custom_ui.js directly
+# =============================================================================
+
+window.LOOKING_GLASS_CONFIG = {
+  // Current location identifier - must match one of the location IDs below
+  currentLocation: 'moscow',
+  
+  // Available locations for the navigation bar
+  // Users will see buttons for each location
+  locations: [
+    {
+      id: 'moscow',
+      name: 'Moscow, RU',
+      url: 'https://lg-msk.example.com',
+      flag: '🇷🇺'
+    },
+    {
+      id: 'amsterdam',
+      name: 'Amsterdam, NL', 
+      url: 'https://lg-ams.example.com',
+      flag: '🇳🇱'
+    },
+    {
+      id: 'frankfurt',
+      name: 'Frankfurt, DE',
+      url: 'https://lg-fra.example.com',
+      flag: '🇩🇪'
+    },
+    {
+      id: 'london',
+      name: 'London, UK',
+      url: 'https://lg-lon.example.com',
+      flag: '🇬🇧'
+    },
+    {
+      id: 'newyork',
+      name: 'New York, US',
+      url: 'https://lg-nyc.example.com',
+      flag: '🇺🇸'
+    }
+  ],
+  
+  // Speed test configuration
+  speedTest: {
+    enabled: true,
+    title: 'Speed Test Downloads',
+    description: 'Download test files to measure your connection speed to this location',
+    // Base URL for speed test files
+    // If nginx is on port 8080, you might use the same origin or specify full URL
+    baseUrl: '/speedtest',  // Relative path (requires reverse proxy)
+    // Or use absolute URL:
+    // baseUrl: 'https://lg-msk.example.com:8080/speedtest',
+    files: [
+      { name: '10 MB', file: '10MB.bin', size: '10 MB' },
+      { name: '100 MB', file: '100MB.bin', size: '100 MB' },
+      { name: '1 GB', file: '1GB.bin', size: '1 GB' }
+    ]
+  },
+  
+  // Theme customization (optional - defaults are Chakra UI colors)
+  theme: {
+    navBarBg: '#1a202c',           // Dark mode nav background
+    navBarBgLight: '#ffffff',       // Light mode nav background  
+    navBarText: '#ffffff',          // Dark mode text
+    navBarTextLight: '#1a202c',     // Light mode text
+    accentColor: '#3182ce',         // Accent color (Chakra blue.500)
+    speedTestBg: '#2d3748',         // Speed test card bg (dark)
+    speedTestBgLight: '#edf2f7'     // Speed test card bg (light)
+  }
+};

@@ -1,0 +1,78 @@
+# =============================================================================
+# Caddyfile for Multi-location Looking Glass
+# Automatic HTTPS with Let's Encrypt
+# =============================================================================
+#
+# Usage:
+#   1. Set environment variables in .env or docker-compose.yml:
+#      LG_DOMAIN=lg.example.com
+#      LG_EMAIL=admin@example.com
+#
+#   2. Or replace {$DOMAIN} and {$EMAIL} with your actual values below
+#
+# =============================================================================
+
+# Global options
+{
+    # Email for Let's Encrypt
+    email {$EMAIL:admin@example.com}
+    
+    # Uncomment for staging certificates (testing)
+    # acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+    
+    # Enable HTTP/3
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# Main site
+{$DOMAIN:lg.example.com} {
+    # Enable compression
+    encode gzip zstd
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Uncomment for HSTS (recommended for production)
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        -Server
+    }
+
+    # Logging
+    log {
+        output file /data/access.log {
+            roll_size 100mb
+            roll_keep 5
+        }
+    }
+
+    # Speed test files - proxy to nginx container
+    # No buffering for accurate speed measurements
+    handle /speedtest/* {
+        reverse_proxy localhost:8080 {
+            flush_interval -1
+            header_down -Server
+        }
+    }
+
+    # Health check endpoint
+    handle /health {
+        reverse_proxy localhost:8080
+    }
+
+    # Everything else goes to hyperglass
+    handle {
+        reverse_proxy localhost:8001 {
+            header_down -Server
+        }
+    }
+}
+
+# Optional: Redirect www to non-www
+# www.{$DOMAIN} {
+#     redir https://{$DOMAIN}{uri} permanent
+# }

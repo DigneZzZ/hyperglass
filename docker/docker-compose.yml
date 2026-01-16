@@ -1,0 +1,100 @@
+# =============================================================================
+# Docker Compose for Multi-location Looking Glass
+# Production Configuration with Caddy Reverse Proxy
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Redis - Required for hyperglass state management
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: lg-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - lg-network
+
+  # ===========================================================================
+  # Looking Glass Application
+  # ===========================================================================
+  looking-glass:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: lg-app
+    restart: unless-stopped
+    # Ports are only exposed to localhost (127.0.0.1)
+    # Caddy will proxy external traffic
+    ports:
+      # Hyperglass web UI - localhost only
+      - "127.0.0.1:8001:8001"
+      # Nginx speed test server - localhost only
+      - "127.0.0.1:8080:8080"
+    environment:
+      - HYPERGLASS_APP_PATH=/etc/hyperglass
+      - HYPERGLASS_HOST=0.0.0.0
+      - HYPERGLASS_PORT=8001
+      - HYPERGLASS_DEBUG=false
+      - HYPERGLASS_DEV_MODE=false
+      - HYPERGLASS_REDIS_HOST=redis
+      - HYPERGLASS_CONTAINER=true
+    volumes:
+      # Mount configuration directory
+      - ./config:/etc/hyperglass:ro
+      # Optional: Mount custom speed test files
+      # - ./speedtest:/var/www/speedtest:ro
+      # Optional: Mount logs
+      - lg_logs:/var/log/hyperglass
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - lg-network
+
+  # ===========================================================================
+  # Caddy - Reverse Proxy with automatic HTTPS
+  # ===========================================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: lg-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"  # HTTP/3 support
+    environment:
+      # Set your domain here or in Caddyfile
+      - DOMAIN=${LG_DOMAIN:-lg.example.com}
+      - EMAIL=${LG_EMAIL:-admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - looking-glass
+    networks:
+      - lg-network
+
+networks:
+  lg-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+  lg_logs:
+  caddy_data:
+  caddy_config:

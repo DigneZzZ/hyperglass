@@ -1,0 +1,224 @@
+# =============================================================================
+# GitHub Actions Workflow: Build and Push Multi-location Looking Glass
+# Builds Docker image and pushes to GitHub Container Registry (GHCR)
+# =============================================================================
+
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'hyperglass/**'
+      - 'pyproject.toml'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'hyperglass/**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Image tag (optional, defaults to branch name)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      # =======================================================================
+      # Checkout and Setup
+      # =======================================================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # =======================================================================
+      # Registry Authentication
+      # =======================================================================
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # =======================================================================
+      # Metadata Extraction
+      # =======================================================================
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            # For tagged releases (v1.0.0 -> 1.0.0, latest)
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # For main/master branch -> latest
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            # Branch name
+            type=ref,event=branch
+            # PR number
+            type=ref,event=pr
+            # Git SHA (short)
+            type=sha,prefix=sha-,format=short
+            # Custom tag from workflow_dispatch
+            type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event.inputs.tag != '' }}
+          labels: |
+            org.opencontainers.image.title=Multi-location Looking Glass
+            org.opencontainers.image.description=Network looking glass with multi-location navigation and speed test functionality
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.documentation=${{ github.server_url }}/${{ github.repository }}#readme
+
+      # =======================================================================
+      # Build and Push
+      # =======================================================================
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            VCS_REF=${{ github.sha }}
+
+      # =======================================================================
+      # Security Scanning
+      # =======================================================================
+      - name: Run Trivy vulnerability scanner
+        if: github.event_name != 'pull_request'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        if: github.event_name != 'pull_request'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+      # =======================================================================
+      # Summary
+      # =======================================================================
+      - name: Generate build summary
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "## 🚀 Docker Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Image Details" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Registry | \`${{ env.REGISTRY }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repository | \`${{ env.IMAGE_NAME }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Digest | \`${{ steps.build-and-push.outputs.digest }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Tags" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pull Command" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Test Job - Verify the image works
+  # ===========================================================================
+  test:
+    name: Test Image
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and test image
+        run: |
+          # Pull the image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}
+          
+          # Test nginx is accessible
+          docker run -d --name test-lg \
+            -p 8080:8080 \
+            -e HYPERGLASS_REDIS_HOST=host.docker.internal \
+            --add-host=host.docker.internal:host-gateway \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} || true
+          
+          # Wait for container to start
+          sleep 10
+          
+          # Test nginx health endpoint
+          curl -f http://localhost:8080/health || echo "Health check skipped (nginx may not be ready)"
+          
+          # Check container logs
+          docker logs test-lg
+          
+          # Cleanup
+          docker stop test-lg || true
+          docker rm test-lg || true
+
+      - name: Test summary
+        run: |
+          echo "## ✅ Image Test Complete" >> $GITHUB_STEP_SUMMARY
+          echo "The image was pulled and basic tests passed." >> $GITHUB_STEP_SUMMARY

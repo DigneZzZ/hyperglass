@@ -1,0 +1,140 @@
+# =============================================================================
+# Example hyperglass.yaml Configuration
+# Multi-location Looking Glass Setup
+# =============================================================================
+#
+# This configuration file demonstrates how to set up hyperglass for a 
+# multi-location deployment with custom UI for location switching and speed tests.
+#
+# Place this file in: /etc/hyperglass/hyperglass.yaml (or your HYPERGLASS_APP_PATH)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Basic Settings
+# -----------------------------------------------------------------------------
+site_title: "Looking Glass - Moscow"
+org_name: "Example Hosting Provider"
+primary_asn: 12345
+
+# Request timeout (seconds)
+request_timeout: 90
+
+# -----------------------------------------------------------------------------
+# Web UI Configuration
+# -----------------------------------------------------------------------------
+web:
+  # Path to the custom JavaScript file for location navigation and speed test
+  # This file is copied into the container at /etc/hyperglass/custom/custom_ui.js
+  custom_javascript: /etc/hyperglass/custom/custom_ui.js
+  
+  # Optional: Path to custom HTML (rendered below the app)
+  # custom_html: /etc/hyperglass/custom/custom.html
+
+  # How to display location/device selector
+  location_display_mode: dropdown  # or 'gallery' for visual selection
+
+  # Logo configuration
+  logo:
+    light: /etc/hyperglass/images/logo-light.png
+    dark: /etc/hyperglass/images/logo-dark.png
+    # Or use a URL:
+    # light: https://example.com/logo-light.png
+    # dark: https://example.com/logo-dark.png
+
+  # Greeting message shown on the main page
+  greeting:
+    enable: true
+    title: "Welcome to Our Network Looking Glass"
+    content: |
+      Query our network routers for BGP routes, ping, and traceroute.
+      Use the navigation bar above to switch between datacenter locations.
+      Download test files to measure your connection speed.
+
+  # Footer links
+  links:
+    - title: "Status Page"
+      url: "https://status.example.com"
+    - title: "Support"
+      url: "https://support.example.com"
+    - title: "PeeringDB"
+      url: "https://www.peeringdb.com/asn/{primary_asn}"
+
+  # Footer menus
+  menus:
+    - title: "Terms of Service"
+      content: |
+        ## Terms of Service
+        
+        This looking glass is provided for informational purposes only.
+        Excessive automated queries may result in temporary access restrictions.
+        
+        By using this service, you agree to use it responsibly.
+    - title: "Help"
+      content: |
+        ## Looking Glass Help
+        
+        ### BGP Route Query
+        Enter an IP address or prefix to see BGP routing information.
+        
+        ### Ping
+        Test connectivity to a destination IP or hostname.
+        
+        ### Traceroute
+        View the network path to a destination.
+        
+        ### Speed Test
+        Download test files from our speed test section to measure throughput.
+
+  # Color theme
+  theme:
+    default_color_mode: system  # 'light', 'dark', or 'system'
+    colors:
+      primary: "#3182ce"      # Blue
+      secondary: "#805ad5"    # Purple
+    fonts:
+      body: "Inter"
+      mono: "JetBrains Mono"
+
+  # Credit link in footer
+  credit:
+    enable: true
+
+# -----------------------------------------------------------------------------
+# Cache Settings
+# -----------------------------------------------------------------------------
+cache:
+  timeout: 120  # Cache query results for 2 minutes
+
+# -----------------------------------------------------------------------------
+# Logging
+# -----------------------------------------------------------------------------
+logging:
+  file:
+    enable: true
+    directory: /var/log/hyperglass
+    max_size: 50MB
+  syslog:
+    enable: false
+
+# -----------------------------------------------------------------------------
+# Structured (RPKI) Data
+# -----------------------------------------------------------------------------
+structured:
+  rpki:
+    mode: cloudflare  # Options: cloudflare, ntt, bgp.tools
+
+# -----------------------------------------------------------------------------
+# Messages (customize error messages, labels, etc.)
+# -----------------------------------------------------------------------------
+messages:
+  no_input: "Please enter a valid IP address, prefix, or AS number."
+  invalid_input: "The input '{}' is not a valid IP address, prefix, or AS number."
+  no_output: "The query completed but returned no output."
+  request_timeout: "The query timed out. Please try again."
+
+# =============================================================================
+# IMPORTANT: Devices Configuration
+# =============================================================================
+# Devices are configured in a separate file: /etc/hyperglass/devices.yaml
+# See devices.yaml.example for the device configuration format.
+# =============================================================================
